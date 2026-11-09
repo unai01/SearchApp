@@ -1,16 +1,21 @@
+
 package com.example.searchapp.di
 
-import dagger.Binds
-import dagger.Module
-import dagger.Provides
+import com.example.searchapp.data.config.ApiConstants
 import com.example.searchapp.data.remote.OpenLibraryApi
 import com.example.searchapp.data.repository.BookRepositoryImpl
 import com.example.searchapp.domain.repository.BookRepository
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
+import java.util.concurrent.TimeUnit
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
+
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -24,11 +29,32 @@ abstract class NetworkModule {
 
     companion object {
 
+        private const val CONNECT_TIMEOUT_SECONDS = 10L
+        private const val READ_TIMEOUT_SECONDS = 15L
+
         @Provides
         @Singleton
-        fun provideRetrofit(): Retrofit {
+        fun provideOkHttpClient(): OkHttpClient {
+            return OkHttpClient.Builder()
+                .connectTimeout(
+                    CONNECT_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS
+                )
+                .readTimeout(
+                    READ_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS
+                )
+                .build()
+        }
+
+        @Provides
+        @Singleton
+        fun provideRetrofit(
+            okHttpClient: OkHttpClient
+        ): Retrofit {
             return Retrofit.Builder()
-                .baseUrl("https://openlibrary.org/")
+                .baseUrl(ApiConstants.BASE_URL)
+                .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
         }

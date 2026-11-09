@@ -6,11 +6,10 @@ import com.example.searchapp.domain.model.Book
 fun BookDto.toDomain(): Book {
     return Book(
         id = key.orEmpty(),
-        title = title.orEmpty().ifBlank { "Sin título" },
+        title = title.orEmpty(),
         author = authors
             ?.joinToString(", ")
-            ?.ifBlank { "Autor desconocido" }
-            ?: "Autor desconocido",
+            .orEmpty(),
         firstPublishYear = firstPublishYear,
         editionCount = editionCount ?: 0
     )

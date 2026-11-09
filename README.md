@@ -1,117 +1,286 @@
+
 # SearchApp — Android Technical Challenge
 
-An Android application built with Kotlin and Jetpack Compose that allows users to search for books using the Open Library API and view their details.
+SearchApp is a native Android application built with Kotlin and Jetpack Compose. It allows users to search for books using the public Open Library API, explore search results and view detailed bibliographic information.
+
+The project focuses on clean architecture, reliable asynchronous operations, cancellation handling, in-memory caching, testability and maintainable code.
 
 ## Features
 
-- Search books using a public REST API.
-- Display search results with book titles and authors.
-- View book details, including title, author, first publication year and edition count.
-- Cancel previous searches when a new query is entered.
-- Prevent outdated search results from updating the UI.
+- Search books by title, author or keyword.
+- Display book titles, authors, publication years and edition counts.
+- Navigate to a detail screen with bibliographic information.
+- Classify books by their first publication year.
+- Cancel ongoing requests when the search query changes.
+- Prevent outdated responses from overwriting newer results.
 - Cache search results in memory for three minutes.
-- Handle loading, empty queries and network errors.
-- Unit tests for business logic, caching, repository behavior and search cancellation.
+- Handle loading, empty results and network failures.
+- Display specific messages for connection errors, timeouts and HTTP failures.
+- Retry failed searches.
+- Restore the selected book using SavedStateHandle.
+- Support light and dark themes.
+- Provide accessible loading feedback.
 
 ## Tech Stack
 
-- Kotlin
-- Jetpack Compose and Material 3
-- MVVM and Clean Architecture
-- Kotlin Coroutines and StateFlow
-- Retrofit and Gson
-- Hilt for dependency injection
-- Navigation Compose
-- JUnit, MockK and kotlinx-coroutines-test
+| Area | Technology |
+| --- | --- |
+| Language | Kotlin |
+| UI | Jetpack Compose, Material 3 |
+| Architecture | Clean Architecture, MVVM |
+| Asynchronous operations | Kotlin Coroutines |
+| State management | StateFlow |
+| Networking | Retrofit, OkHttp, Gson |
+| Dependency injection | Hilt |
+| Navigation | Navigation Compose |
+| Testing | JUnit, MockK, kotlinx-coroutines-test |
+| CI/CD | GitHub Actions |
+| Build system | Gradle |
 
 ## Architecture
 
-The application follows Clean Architecture principles, organized into three logical layers within a single Gradle module.
+The application follows Clean Architecture principles with three logical layers organized within a single Gradle module.
 
-**Presentation:** Jetpack Compose screens, SearchViewModel and UI state management.
+### Presentation
 
-**Domain:** Book model, BookRepository interface and SearchBooksUseCase.
+Contains Jetpack Compose screens, navigation, SearchViewModel and SearchUiState.
 
-**Data:** Retrofit API, DTOs, mappers, repository implementation and in-memory cache.
+Responsibilities:
+- Render application state.
+- Handle user interactions.
+- Manage search cancellation.
+- Prevent outdated results from updating the UI.
+- Classify network failures for user-facing feedback.
+- Preserve the selected book across supported state restoration scenarios.
 
-Hilt provides dependency injection and connects the repository interface with its implementation.
+### Domain
 
-## API
+Contains:
+- Book and BookCategory models.
+- BookRepository interface.
+- SearchBooksUseCase.
 
-The application uses the public Open Library Search API.
+Responsibilities:
+- Define business models and repository contracts.
+- Validate and normalize search input.
+- Derive book classifications independently of the UI and networking implementation.
 
-Base URL: https://openlibrary.org/
+### Data
 
-Example endpoint: https://openlibrary.org/search.json?q=kotlin&limit=20
+Contains:
+- OpenLibraryApi.
+- API DTOs and domain mappers.
+- BookRepositoryImpl.
+- BookSearchCache.
+- Network configuration and dependency injection.
 
-Open Library was selected because it provides publicly accessible book information suitable for demonstrating search, asynchronous networking and detail navigation.
+Responsibilities:
+- Retrieve book information.
+- Transform API responses into domain models.
+- Reuse valid cached results.
+- Avoid caching cancelled requests.
 
-## Cancellation
+Dependency injection is handled by Hilt.
 
-SearchViewModel manages the active search using a coroutine Job within viewModelScope.
+## Public API
 
-When the user changes the query or starts another search, the previous Job is cancelled.
+SearchApp uses the Open Library Search API.
 
-An incremental search version is also checked before updating UI state, preventing outdated results from replacing newer ones.
+Base URL:
 
-CancellationException is propagated correctly.
+https://openlibrary.org/
 
-## Caching
+Example request:
 
-BookSearchCache provides an in-memory cache keyed by normalized search query.
+https://openlibrary.org/search.json?q=kotlin&limit=20
 
-- TTL: three minutes.
-- Cache hit: return stored results without a new network request.
-- Cache miss or expiration: fetch fresh data from the API.
+The application retrieves up to 20 results per search request.
+
+Open Library was selected because it provides public bibliographic data without requiring authentication or API credentials.
+
+## Search Cancellation and Concurrency
+
+SearchViewModel manages the active search using a coroutine Job launched in viewModelScope.
+
+When the user changes the query or starts another search:
+
+1. The previous search Job is cancelled.
+2. A search version counter is incremented.
+3. A new search is started when appropriate.
+4. Results are applied only if their search version is still current.
+
+CancellationException is rethrown rather than treated as a regular network error.
+
+The repository also checks coroutine cancellation before writing newly retrieved results to the cache.
+
+This approach combines structured concurrency with explicit protection against outdated UI updates.
+
+## In-Memory Cache
+
+BookSearchCache stores search results using normalized queries as keys.
+
+Configuration:
+- Time-to-live: 3 minutes.
+- Storage: in memory.
 - Query normalization: trim whitespace and ignore letter case.
+- Expiration measurement: monotonic clock.
 - Thread safety: synchronized cache operations.
-- Time measurement: monotonic clock.
 
-The cache is intentionally memory-only, as persistent storage is not required for this challenge.
+Behavior:
+- Valid cache entry: return results without a network request.
+- Missing entry: request data from Open Library.
+- Expired entry: fetch fresh results and update the cache.
+- Cancelled request: do not cache an incomplete result.
+
+The cache is intentionally memory-only to avoid introducing unnecessary persistence complexity.
+
+## Error Handling
+
+The application distinguishes between:
+
+- Connection and network failures.
+- Request timeouts.
+- HTTP response errors.
+- Unexpected errors.
+
+Each category is mapped to a user-facing message through Android string resources.
+
+The interface also provides a retry action.
+
+Network requests use explicit connection and read timeouts.
+
+## Book Classification
+
+SearchApp includes a small domain-level enrichment rule based on the first publication year:
+
+| Publication year | Category |
+| --- | --- |
+| Before 1950 | Classic |
+| 1950 or later | Contemporary |
+| Unknown | Unclassified |
+
+This is an application-defined demonstration rule, not an official literary classification.
+
+The category is calculated from the existing domain model without additional API requests or stored fields.
 
 ## Testing
 
-The project includes 11 unit tests covering:
+The project includes unit tests covering:
 
-- Search use case validation and query normalization.
-- Cache storage, retrieval, expiration and query independence.
-- Repository API calls, cache hits and cache expiration.
-- Cancellation of outdated searches in the ViewModel.
+- Search query validation and normalization.
+- In-memory cache hits and expiration.
+- Cache behavior at the TTL boundary.
+- Independent and normalized cache keys.
+- Repository networking and cache integration.
+- Cancellation without populating the cache.
+- Cancellation of previous searches.
+- Protection against outdated results.
+- Selected book restoration.
+- Blank search queries.
+- Network, timeout, HTTP and unexpected error classification.
+- Book classification and boundary conditions.
 
-Run tests and build the debug APK:
+Run the unit tests:
 
 ```bash
-./gradlew clean testDebugUnitTest assembleDebug
+./gradlew testDebugUnitTest
+```
+
+Build the debug APK:
+
+```bash
+./gradlew assembleDebug
+```
+
+Run both:
+
+```bash
+./gradlew testDebugUnitTest assembleDebug
 ```
 
 On Windows:
 
 ```powershell
-.\gradlew.bat clean testDebugUnitTest assembleDebug
+.\gradlew.bat testDebugUnitTest assembleDebug
 ```
+
+## Continuous Integration
+
+GitHub Actions automatically validates the project using the Android CI workflow.
+
+The workflow:
+1. Checks out the repository.
+2. Configures JDK 17.
+3. Installs the required Android SDK components.
+4. Runs the unit test suite.
+5. Builds the debug APK.
+6. Uploads test reports if validation fails.
+
+Workflow file:
+
+`.github/workflows/android-ci.yml`
 
 ## Running the Application
 
-1. Clone the repository.
-2. Open the project in Android Studio.
-3. Install Android SDK 36 if necessary.
-4. Sync Gradle dependencies.
-5. Run the application on an emulator or Android device with API 26 or later.
+Requirements:
+- Android Studio with Android SDK 36 installed.
+- JDK 17.
+- Android emulator or physical device running API 26 or later.
+- Internet connection for uncached searches.
 
-An Internet connection is required for uncached searches.
+Steps:
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/unai01/SearchApp.git
+   ```
+
+2. Open the project in Android Studio.
+3. Allow Gradle to synchronize dependencies.
+4. Select an emulator or connected Android device.
+5. Run the `app` configuration.
+
+No API key or additional configuration is required.
 
 ## Technical Decisions
 
-- A single Gradle module was chosen to keep the technical challenge focused while preserving clear architectural boundaries through packages.
-- Domain logic is independent of Android UI and networking frameworks.
-- StateFlow provides observable UI state.
-- Coroutine cancellation and search versioning protect against outdated results.
-- In-memory caching avoids unnecessary API calls without introducing database complexity.
-- The detail screen reuses the selected search result instead of performing an additional request.
+### Single Gradle module
 
-## Potential Improvements
+The project uses one Gradle module with clearly separated architectural packages.
 
-- Restore the selected book after process recreation using SavedStateHandle and navigation arguments.
-- Add more UI tests.
-- Improve accessibility and visual feedback.
-- Add persistent caching for offline support.
+This keeps the technical challenge focused while preserving the responsibilities of each layer.
+
+### MVVM and StateFlow
+
+SearchViewModel exposes observable UI state through StateFlow, keeping the Compose screens focused on rendering and user interactions.
+
+### Cancellation and stale-result protection
+
+Coroutine Job cancellation is combined with a search version counter to prevent outdated requests from affecting the current UI.
+
+### Memory-only caching
+
+A short-lived cache reduces redundant network calls without introducing Room or persistent storage that the assignment does not require.
+
+### Reusing selected search data
+
+The detail screen uses the selected book instead of making an unnecessary additional API request.
+
+Selected book fields are saved through SavedStateHandle.
+
+### Domain-level enrichment
+
+Book classification is calculated from existing publication data and can be tested independently of Android components.
+
+### Scope management
+
+Authentication, biometric access, encrypted storage and persistent offline caching were intentionally excluded because the application handles public bibliographic data and does not store sensitive user information.
+
+## Possible Future Improvements
+
+- Add Compose UI and navigation tests.
+- Introduce pagination for larger result sets.
+- Add persistent offline caching if product requirements justify it.
+- Extend error handling with more specific HTTP status behavior.
+- Introduce additional accessibility and localization testing.

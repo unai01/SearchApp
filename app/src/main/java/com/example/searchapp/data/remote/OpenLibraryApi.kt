@@ -1,5 +1,6 @@
 package com.example.searchapp.data.remote
 
+import com.example.searchapp.data.config.ApiConstants
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -8,6 +9,6 @@ interface OpenLibraryApi {
     @GET("search.json")
     suspend fun searchBooks(
         @Query("q") query: String,
-        @Query("limit") limit: Int = 20
+        @Query("limit") limit: Int = ApiConstants.SEARCH_LIMIT
     ): SearchResponseDto
 }

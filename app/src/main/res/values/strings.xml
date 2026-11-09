@@ -1,3 +1,53 @@
+
 <resources>
     <string name="app_name">SearchApp</string>
+
+    <!-- Search -->
+    <string name="search_title">Explorar libros</string>
+    <string name="search_subtitle">Busca libros y descubre sus detalles.</string>
+    <string name="search_hint">Título, autor o palabra clave</string>
+    <string name="search_placeholder">Ej. Clean Code</string>
+    <string name="search_button">Buscar libros</string>
+    <string name="search_retry">Reintentar</string>
+    <string name="search_results_count">%1$d resultados</string>
+    <string name="search_loading">Buscando libros</string>
+    <string name="search_error">No se han podido cargar los libros.</string>
+
+    <!-- Search states -->
+    <string name="search_initial_title">¿Qué libro estás buscando?</string>
+    <string name="search_initial_description">Introduce un título, autor o palabra clave para empezar.</string>
+    <string name="search_ready_title">Todo listo para buscar</string>
+    <string name="search_ready_description">Pulsa Buscar libros para descubrir los resultados.</string>
+    <string name="search_empty_title">No se encontraron libros</string>
+    <string name="search_empty_description">Prueba con otro título, autor o palabra clave.</string>
+
+    <!-- Book -->
+    <string name="book_year">Año: %1$d</string>
+    <string name="book_editions">%1$d ediciones</string>
+
+    <!-- Detail -->
+    <string name="detail_back">Volver</string>
+    <string name="detail_title">Detalle del libro</string>
+    <string name="detail_section">Información bibliográfica</string>
+    <string name="detail_author">Autor</string>
+    <string name="detail_first_published">Primera publicación</string>
+    <string name="detail_editions">Número de ediciones</string>
+    <string name="detail_unknown">Desconocida</string>
+    <string name="detail_not_found">No se ha encontrado el libro seleccionado.</string>
+
+    <!-- Detail Category-->
+    <string name="detail_category">Clasificación por año</string>
+    <string name="book_category_classic">Clásico (anterior a 1950)</string>
+    <string name="book_category_contemporary">Contemporáneo (desde 1950)</string>
+    <string name="book_category_unknown">Sin clasificar</string>
+
+    <!-- Missing book information -->
+    <string name="book_unknown_title">Sin título</string>
+    <string name="book_unknown_author">Autor desconocido</string>
+
+    <!-- Error Messages-->
+    <string name="search_error_network">No se ha podido establecer la conexión. Comprueba tu conexión a Internet e inténtalo de nuevo.</string>
+    <string name="search_error_timeout">La búsqueda está tardando demasiado. Inténtalo de nuevo.</string>
+    <string name="search_error_server">El servicio de búsqueda no está disponible en este momento. Inténtalo más tarde.</string>
+
 </resources>

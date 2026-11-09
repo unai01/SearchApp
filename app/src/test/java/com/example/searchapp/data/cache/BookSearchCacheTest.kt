@@ -61,4 +61,17 @@ class BookSearchCacheTest {
         assertEquals(books, cache.get("kotlin"))
         assertEquals(books, cache.get("KOTLIN"))
     }
+
+    @Test
+    fun `cached results remain valid just before expiration`() {
+        cache.put("Kotlin", books)
+
+        fakeTime += 179_999L
+
+        assertEquals(books, cache.get("Kotlin"))
+
+        fakeTime += 1L
+
+        assertNull(cache.get("Kotlin"))
+    }
 }

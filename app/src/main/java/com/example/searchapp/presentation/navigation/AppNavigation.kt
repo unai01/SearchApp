@@ -11,6 +11,11 @@ import com.example.searchapp.presentation.detail.DetailScreen
 import com.example.searchapp.presentation.search.SearchScreen
 import com.example.searchapp.presentation.search.SearchViewModel
 
+private object Routes {
+    const val SEARCH = "search"
+    const val DETAIL = "detail"
+}
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
@@ -20,19 +25,19 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = "search"
+        startDestination = Routes.SEARCH
     ) {
-        composable("search") {
+        composable(Routes.SEARCH) {
             SearchScreen(
                 viewModel = searchViewModel,
                 onBookClick = { book ->
                     searchViewModel.selectBook(book)
-                    navController.navigate("detail")
+                    navController.navigate(Routes.DETAIL)
                 }
             )
         }
 
-        composable("detail") {
+        composable(Routes.DETAIL) {
             DetailScreen(
                 book = selectedBook,
                 onBack = {

@@ -1,11 +1,23 @@
+
 package com.example.searchapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Light theme
+val BluePrimary = Color(0xFF2563EB)
+val BlueDark = Color(0xFF19365B)
+val BlueSecondary = Color(0xFF526580)
+val BlueLight = Color(0xFFE9EFFA)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val AppBackground = Color(0xFFE8EFFA)
+val CardBackground = Color(0xFFFFFFFF)
+val TextPrimary = Color(0xFF19365B)
+val TextSecondary = Color(0xFF64748B)
+
+// Dark theme
+val DarkPrimary = Color(0xFF93B4FF)
+val DarkBackground = Color(0xFF101827)
+val DarkSurface = Color(0xFF1B2940)
+val DarkSurfaceVariant = Color(0xFF293A55)
+val DarkTextPrimary = Color(0xFFF1F5FC)
+val DarkTextSecondary = Color(0xFFBCC9DD)

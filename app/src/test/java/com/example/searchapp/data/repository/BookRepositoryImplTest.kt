@@ -7,11 +7,19 @@ import com.example.searchapp.data.remote.SearchResponseDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class BookRepositoryImplTest {
 
     private lateinit var api: OpenLibraryApi
@@ -43,7 +51,9 @@ class BookRepositoryImplTest {
 
     @Test
     fun `first search fetches data from API`() = runTest {
-        coEvery { api.searchBooks("Kotlin", any()) } returns response
+        coEvery {
+            api.searchBooks("Kotlin", any())
+        } returns response
 
         val result = repository.searchBooks("Kotlin")
 
@@ -57,7 +67,9 @@ class BookRepositoryImplTest {
 
     @Test
     fun `valid cache avoids second API request`() = runTest {
-        coEvery { api.searchBooks("Kotlin", any()) } returns response
+        coEvery {
+            api.searchBooks("Kotlin", any())
+        } returns response
 
         repository.searchBooks("Kotlin")
         repository.searchBooks("Kotlin")
@@ -69,7 +81,9 @@ class BookRepositoryImplTest {
 
     @Test
     fun `expired cache triggers new API request`() = runTest {
-        coEvery { api.searchBooks("Kotlin", any()) } returns response
+        coEvery {
+            api.searchBooks("Kotlin", any())
+        } returns response
 
         repository.searchBooks("Kotlin")
 
@@ -78,6 +92,44 @@ class BookRepositoryImplTest {
         repository.searchBooks("Kotlin")
 
         coVerify(exactly = 2) {
+            api.searchBooks("Kotlin", any())
+        }
+    }
+
+    @Test
+    fun `cancelled search does not populate cache`() = runTest {
+        val apiStarted = CompletableDeferred<Unit>()
+        val releaseApi = CompletableDeferred<Unit>()
+
+        coEvery {
+            api.searchBooks("Kotlin", any())
+        } coAnswers {
+            apiStarted.complete(Unit)
+            releaseApi.await()
+            response
+        }
+
+        val search = async {
+            repository.searchBooks("Kotlin")
+        }
+
+        runCurrent()
+        apiStarted.await()
+
+        search.cancel()
+        releaseApi.complete(Unit)
+
+        val result = runCatching {
+            search.await()
+        }
+
+        assertTrue(
+            result.exceptionOrNull() is CancellationException
+        )
+
+        assertNull(cache.get("Kotlin"))
+
+        coVerify(exactly = 1) {
             api.searchBooks("Kotlin", any())
         }
     }

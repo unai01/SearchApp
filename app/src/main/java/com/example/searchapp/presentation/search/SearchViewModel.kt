@@ -1,4 +1,3 @@
-
 package com.example.searchapp.presentation.search
 
 import androidx.lifecycle.SavedStateHandle
@@ -13,6 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -20,6 +23,13 @@ class SearchViewModel @Inject constructor(
     private val searchBooksUseCase: SearchBooksUseCase,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private companion object {
+        const val ERROR_NETWORK = "ERROR_NETWORK"
+        const val ERROR_TIMEOUT = "ERROR_TIMEOUT"
+        const val ERROR_SERVER = "ERROR_SERVER"
+        const val ERROR_UNKNOWN = "ERROR_UNKNOWN"
+    }
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
@@ -60,7 +70,8 @@ class SearchViewModel @Inject constructor(
                 if (currentVersion == searchVersion) {
                     _uiState.value = SearchUiState(
                         query = query,
-                        books = books
+                        books = books,
+                        hasSearched = true
                     )
                 }
             } catch (exception: CancellationException) {
@@ -69,7 +80,7 @@ class SearchViewModel @Inject constructor(
                 if (currentVersion == searchVersion) {
                     _uiState.value = SearchUiState(
                         query = query,
-                        error = "No se han podido cargar los libros."
+                        error = classifyError(exception)
                     )
                 }
             }
@@ -105,6 +116,16 @@ class SearchViewModel @Inject constructor(
                 "selectedBookEditions"
             ) ?: 0
         )
+    }
+
+    private fun classifyError(exception: Exception): String {
+        return when (exception) {
+            is SocketTimeoutException -> ERROR_TIMEOUT
+            is UnknownHostException -> ERROR_NETWORK
+            is HttpException -> ERROR_SERVER
+            is IOException -> ERROR_NETWORK
+            else -> ERROR_UNKNOWN
+        }
     }
 
     private fun cancelPreviousSearch() {

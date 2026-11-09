@@ -1,4 +1,3 @@
-
 package com.example.searchapp.presentation.search
 
 import androidx.lifecycle.SavedStateHandle
@@ -7,6 +6,10 @@ import com.example.searchapp.domain.repository.BookRepository
 import com.example.searchapp.domain.usecase.SearchBooksUseCase
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.io.IOException
+import java.net.SocketTimeoutException
+import retrofit2.HttpException
+import retrofit2.Response
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -173,7 +176,7 @@ class SearchViewModelTest {
             )
 
             assertEquals(
-                "No se han podido cargar los libros.",
+                "ERROR_UNKNOWN",
                 viewModel.uiState.value.error
             )
 
@@ -182,4 +185,80 @@ class SearchViewModelTest {
                 viewModel.uiState.value.books
             )
         }
+
+
+    @Test
+    fun `network error is classified correctly`() =
+        runTest(dispatcher) {
+            coEvery {
+                repository.searchBooks("Kotlin")
+            } throws IOException("Connection failed")
+
+            viewModel.onQueryChange("Kotlin")
+            viewModel.search()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                "ERROR_NETWORK",
+                viewModel.uiState.value.error
+            )
+            assertEquals(
+                false,
+                viewModel.uiState.value.isLoading
+            )
+        }
+
+    @Test
+    fun `timeout error is classified correctly`() =
+        runTest(dispatcher) {
+            coEvery {
+                repository.searchBooks("Kotlin")
+            } throws SocketTimeoutException("Read timed out")
+
+            viewModel.onQueryChange("Kotlin")
+            viewModel.search()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                "ERROR_TIMEOUT",
+                viewModel.uiState.value.error
+            )
+            assertEquals(
+                false,
+                viewModel.uiState.value.isLoading
+            )
+        }
+
+    @Test
+    fun `http error is classified correctly`() =
+        runTest(dispatcher) {
+            coEvery {
+                repository.searchBooks("Kotlin")
+            } throws HttpException(
+                Response.error<Any>(
+                    503,
+                    okhttp3.ResponseBody.create(
+                        null,
+                        "Service unavailable"
+                    )
+                )
+            )
+
+            viewModel.onQueryChange("Kotlin")
+            viewModel.search()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                "ERROR_SERVER",
+                viewModel.uiState.value.error
+            )
+            assertEquals(
+                false,
+                viewModel.uiState.value.isLoading
+            )
+        }
+
 }

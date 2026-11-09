@@ -12,9 +12,11 @@ class BookSearchCache @Inject constructor() {
         val createdAt: Long
     )
 
-    private val entries = mutableMapOf<String, CacheEntry>()
+    private companion object {
+        const val CACHE_TTL_MILLIS = 3 * 60 * 1000L
+    }
 
-    private val ttlMillis = 3 * 60 * 1000L
+    private val entries = mutableMapOf<String, CacheEntry>()
 
     internal var currentTimeMillis: () -> Long = {
         System.nanoTime() / 1_000_000L
@@ -27,7 +29,7 @@ class BookSearchCache @Inject constructor() {
 
         val elapsed = currentTimeMillis() - entry.createdAt
 
-        if (elapsed >= ttlMillis || elapsed < 0) {
+        if (elapsed >= CACHE_TTL_MILLIS || elapsed < 0) {
             entries.remove(key)
             return null
         }
