@@ -1,5 +1,7 @@
+
 package com.example.searchapp.presentation.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.searchapp.domain.model.Book
@@ -15,12 +17,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val searchBooksUseCase: SearchBooksUseCase
+    private val searchBooksUseCase: SearchBooksUseCase,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
-    private val _selectedBook = MutableStateFlow<Book?>(null)
+
+    private val _selectedBook = MutableStateFlow(
+        restoreSelectedBook()
+    )
     val selectedBook: StateFlow<Book?> = _selectedBook.asStateFlow()
 
     private var searchJob: Job? = null
@@ -28,13 +34,11 @@ class SearchViewModel @Inject constructor(
 
     fun onQueryChange(query: String) {
         cancelPreviousSearch()
-
         _uiState.value = SearchUiState(query = query)
     }
 
     fun search() {
         val query = _uiState.value.query.trim()
-
         cancelPreviousSearch()
 
         if (query.isBlank()) {
@@ -73,7 +77,34 @@ class SearchViewModel @Inject constructor(
     }
 
     fun selectBook(book: Book) {
+        savedStateHandle["selectedBookId"] = book.id
+        savedStateHandle["selectedBookTitle"] = book.title
+        savedStateHandle["selectedBookAuthor"] = book.author
+        savedStateHandle["selectedBookYear"] = book.firstPublishYear
+        savedStateHandle["selectedBookEditions"] = book.editionCount
+
         _selectedBook.value = book
+    }
+
+    private fun restoreSelectedBook(): Book? {
+        val id = savedStateHandle.get<String>("selectedBookId")
+            ?: return null
+
+        val title = savedStateHandle.get<String>("selectedBookTitle")
+            ?: return null
+
+        val author = savedStateHandle.get<String>("selectedBookAuthor")
+            ?: return null
+
+        return Book(
+            id = id,
+            title = title,
+            author = author,
+            firstPublishYear = savedStateHandle["selectedBookYear"],
+            editionCount = savedStateHandle.get<Int>(
+                "selectedBookEditions"
+            ) ?: 0
+        )
     }
 
     private fun cancelPreviousSearch() {

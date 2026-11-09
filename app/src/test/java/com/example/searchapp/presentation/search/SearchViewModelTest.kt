@@ -1,5 +1,7 @@
+
 package com.example.searchapp.presentation.search
 
+import androidx.lifecycle.SavedStateHandle
 import com.example.searchapp.domain.model.Book
 import com.example.searchapp.domain.repository.BookRepository
 import com.example.searchapp.domain.usecase.SearchBooksUseCase
@@ -10,10 +12,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -32,8 +34,10 @@ class SearchViewModelTest {
         Dispatchers.setMain(dispatcher)
 
         repository = mockk()
+
         viewModel = SearchViewModel(
-            SearchBooksUseCase(repository)
+            SearchBooksUseCase(repository),
+            SavedStateHandle()
         )
     }
 
@@ -43,50 +47,139 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `new search cancels previous search results`() = runTest(dispatcher) {
-        val kotlinBook = Book(
-            id = "1",
-            title = "Kotlin Book",
-            author = "Author One",
-            firstPublishYear = 2020,
-            editionCount = 1
-        )
+    fun `new search cancels previous search results`() =
+        runTest(dispatcher) {
 
-        val androidBook = Book(
-            id = "2",
-            title = "Android Book",
-            author = "Author Two",
-            firstPublishYear = 2022,
-            editionCount = 2
-        )
+            val kotlinBook = Book(
+                id = "1",
+                title = "Kotlin Book",
+                author = "Author One",
+                firstPublishYear = 2020,
+                editionCount = 1
+            )
 
-        coEvery { repository.searchBooks("Kotlin") } coAnswers {
-            delay(5_000)
-            listOf(kotlinBook)
+            val androidBook = Book(
+                id = "2",
+                title = "Android Book",
+                author = "Author Two",
+                firstPublishYear = 2022,
+                editionCount = 2
+            )
+
+            coEvery {
+                repository.searchBooks("Kotlin")
+            } coAnswers {
+                delay(5_000)
+                listOf(kotlinBook)
+            }
+
+            coEvery {
+                repository.searchBooks("Android")
+            } returns listOf(androidBook)
+
+            viewModel.onQueryChange("Kotlin")
+            viewModel.search()
+
+            // Permitimos que comience la primera búsqueda.
+            runCurrent()
+
+            viewModel.onQueryChange("Android")
+            viewModel.search()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(androidBook),
+                viewModel.uiState.value.books
+            )
+
+            assertEquals(
+                "Android",
+                viewModel.uiState.value.query
+            )
         }
 
-        coEvery { repository.searchBooks("Android") } returns
-                listOf(androidBook)
+    @Test
+    fun `selected book is restored from saved state`() {
 
-        viewModel.onQueryChange("Kotlin")
-        viewModel.search()
+        val savedStateHandle = SavedStateHandle()
 
-        // Permitimos que comience la primera búsqueda.
-        runCurrent()
+        val book = Book(
+            id = "1",
+            title = "Kotlin Book",
+            author = "Test Author",
+            firstPublishYear = 2020,
+            editionCount = 3
+        )
 
-        viewModel.onQueryChange("Android")
-        viewModel.search()
+        val originalViewModel = SearchViewModel(
+            SearchBooksUseCase(repository),
+            savedStateHandle
+        )
 
-        advanceUntilIdle()
+        originalViewModel.selectBook(book)
 
-        assertEquals(
-            listOf(androidBook),
-            viewModel.uiState.value.books
+        val restoredViewModel = SearchViewModel(
+            SearchBooksUseCase(repository),
+            savedStateHandle
         )
 
         assertEquals(
-            "Android",
-            viewModel.uiState.value.query
+            book,
+            restoredViewModel.selectedBook.value
         )
     }
+
+    @Test
+    fun `blank query does not trigger repository search`() =
+        runTest(dispatcher) {
+
+            viewModel.onQueryChange("   ")
+            viewModel.search()
+
+            advanceUntilIdle()
+
+            io.mockk.coVerify(exactly = 0) {
+                repository.searchBooks(any())
+            }
+
+            assertEquals(
+                false,
+                viewModel.uiState.value.isLoading
+            )
+
+            assertEquals(
+                emptyList<Book>(),
+                viewModel.uiState.value.books
+            )
+        }
+
+    @Test
+    fun `repository error updates UI state and stops loading`() =
+        runTest(dispatcher) {
+
+            coEvery {
+                repository.searchBooks("Kotlin")
+            } throws RuntimeException("Network error")
+
+            viewModel.onQueryChange("Kotlin")
+            viewModel.search()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                false,
+                viewModel.uiState.value.isLoading
+            )
+
+            assertEquals(
+                "No se han podido cargar los libros.",
+                viewModel.uiState.value.error
+            )
+
+            assertEquals(
+                emptyList<Book>(),
+                viewModel.uiState.value.books
+            )
+        }
 }

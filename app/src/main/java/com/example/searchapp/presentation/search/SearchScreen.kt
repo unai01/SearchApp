@@ -1,3 +1,4 @@
+
 package com.example.searchapp.presentation.search
 
 import androidx.compose.foundation.clickable
@@ -58,10 +59,7 @@ fun SearchScreen(
         }
 
         LazyColumn {
-            items(
-                items = state.books,
-                key = { it.id }
-            ) { book ->
+            items(state.books) { book ->
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
