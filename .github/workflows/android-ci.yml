@@ -9,6 +9,7 @@ on:
 
 jobs:
   build-and-test:
+    name: Build and Unit Tests
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,14 +28,13 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Grant Gradle permissions
         run: chmod +x gradlew
 
-      - name: Run tests and build APK
+      - name: Run unit tests and build APK
         run: ./gradlew testDebugUnitTest assembleDebug --no-daemon
 
       - name: Upload test reports on failure
@@ -44,3 +44,4 @@ jobs:
           name: unit-test-reports
           path: app/build/reports/tests/
           if-no-files-found: ignore
+
